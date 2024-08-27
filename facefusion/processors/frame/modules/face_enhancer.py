@@ -5,25 +5,27 @@ import cv2
 import threading
 import numpy
 import onnxruntime
+import os
 
 import facefusion.globals
 import facefusion.processors.frame.core as frame_processors
 from facefusion import config, process_manager, logger, wording
-from facefusion.face_analyser import get_many_faces, clear_face_analyser, find_similar_faces, get_one_face
+from facefusion.face_analyser import get_many_faces, clear_face_analyser, find_similar_faces, get_one_face, get_average_face
 from facefusion.face_masker import create_static_box_mask, create_occlusion_mask, clear_face_occluder
 from facefusion.face_helper import warp_face_by_face_landmark_5, paste_back
 from facefusion.execution import apply_execution_provider_options
 from facefusion.content_analyser import clear_content_analyser
-from facefusion.face_store import get_reference_faces
+from facefusion.face_store import get_reference_faces, clear_reference_faces, append_reference_face
 from facefusion.normalizer import normalize_output_path
 from facefusion.typing import Face, VisionFrame, UpdateProcess, ProcessMode, ModelSet, OptionsWithModel, QueuePayload
 from facefusion.common_helper import create_metavar
 from facefusion.filesystem import is_file, is_image, is_video, resolve_relative_path
 from facefusion.download import conditional_download, is_download_done
-from facefusion.vision import read_image, read_static_image, write_image
+from facefusion.vision import read_image, read_static_image, write_image, read_static_images
 from facefusion.processors.frame.typings import FaceEnhancerInputs
 from facefusion.processors.frame import globals as frame_processors_globals
 from facefusion.processors.frame import choices as frame_processors_choices
+from facefusion.processors.frame.core import get_frame_processors_modules
 
 FRAME_PROCESSOR = None
 THREAD_SEMAPHORE : threading.Semaphore = threading.Semaphore()
@@ -33,50 +35,50 @@ MODELS : ModelSet =\
 {
 	'codeformer':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/codeformer.onnx',
-		'path': resolve_relative_path('../.assets/models/codeformer.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/codeformer.onnx',
+		'path': resolve_relative_path('../.assets/models/codeformer.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/codeformer.onnx'),
 		'template': 'ffhq_512',
 		'size': (512, 512)
 	},
 	'gfpgan_1.2':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/gfpgan_1.2.onnx',
-		'path': resolve_relative_path('../.assets/models/gfpgan_1.2.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/gfpgan_1.2.onnx',
+		'path': resolve_relative_path('../.assets/models/gfpgan_1.2.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/gfpgan_1.2.onnx'),
 		'template': 'ffhq_512',
 		'size': (512, 512)
 	},
 	'gfpgan_1.3':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/gfpgan_1.3.onnx',
-		'path': resolve_relative_path('../.assets/models/gfpgan_1.3.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/gfpgan_1.3.onnx',
+		'path': resolve_relative_path('../.assets/models/gfpgan_1.3.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/gfpgan_1.3.onnx'),
 		'template': 'ffhq_512',
 		'size': (512, 512)
 	},
 	'gfpgan_1.4':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/gfpgan_1.4.onnx',
-		'path': resolve_relative_path('../.assets/models/gfpgan_1.4.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/gfpgan_1.4.onnx',
+		'path': resolve_relative_path('../.assets/models/gfpgan_1.4.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/gfpgan_1.4.onnx'),
 		'template': 'ffhq_512',
 		'size': (512, 512)
 	},
 	'gpen_bfr_256':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/gpen_bfr_256.onnx',
-		'path': resolve_relative_path('../.assets/models/gpen_bfr_256.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/gpen_bfr_256.onnx',
+		'path': resolve_relative_path('../.assets/models/gpen_bfr_256.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/gpen_bfr_256.onnx'),
 		'template': 'arcface_128_v2',
 		'size': (256, 256)
 	},
 	'gpen_bfr_512':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/gpen_bfr_512.onnx',
-		'path': resolve_relative_path('../.assets/models/gpen_bfr_512.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/gpen_bfr_512.onnx',
+		'path': resolve_relative_path('../.assets/models/gpen_bfr_512.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/gpen_bfr_512.onnx'),
 		'template': 'ffhq_512',
 		'size': (512, 512)
 	},
 	'restoreformer_plus_plus':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/restoreformer_plus_plus.onnx',
-		'path': resolve_relative_path('../.assets/models/restoreformer_plus_plus.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/restoreformer_plus_plus.onnx',
+		'path': resolve_relative_path('../.assets/models/restoreformer_plus_plus.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/restoreformer_plus_plus.onnx'),
 		'template': 'ffhq_512',
 		'size': (512, 512)
 	}
@@ -124,15 +126,19 @@ def register_args(program : ArgumentParser) -> None:
 	program.add_argument('--face-enhancer-blend', help = wording.get('help.face_enhancer_blend'), type = int, default = config.get_int_value('frame_processors.face_enhancer_blend', '80'), choices = frame_processors_choices.face_enhancer_blend_range, metavar = create_metavar(frame_processors_choices.face_enhancer_blend_range))
 
 
-def apply_args(program : ArgumentParser) -> None:
-	args = program.parse_args()
-	frame_processors_globals.face_enhancer_model = args.face_enhancer_model
-	frame_processors_globals.face_enhancer_blend = args.face_enhancer_blend
+def apply_args(program : ArgumentParser = None) -> None:
+	if program is None:
+		frame_processors_globals.face_enhancer_model = 'codeformer' if facefusion.globals.face_enhancer_model is None else facefusion.globals.face_enhancer_model
+		frame_processors_globals.face_enhancer_blend = 80 if facefusion.globals.face_enhancer_blend is None else int(facefusion.globals.face_enhancer_blend)
+	else:
+		args = program.parse_args()
+		frame_processors_globals.face_enhancer_model = args.face_enhancer_model
+		frame_processors_globals.face_enhancer_blend = args.face_enhancer_blend
 
 
 def pre_check() -> bool:
 	if not facefusion.globals.skip_download:
-		download_directory_path = resolve_relative_path('../.assets/models')
+		download_directory_path = resolve_relative_path('../.assets/models') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models')
 		model_url = get_options('model').get('url')
 		process_manager.check()
 		conditional_download(download_directory_path, [ model_url ])
@@ -271,7 +277,24 @@ def process_frames(source_path : List[str], queue_payloads : List[QueuePayload],
 		update_progress()
 
 
-def process_image(source_path : str, target_path : str, output_path : str) -> None:
+def process_image(source_paths : List[str], target_path : str, output_path : str) -> None:
+	# multi-face swap -> update reference face
+	if 'reference' in facefusion.globals.face_selector_mode and facefusion.globals.reference_face_path is not None and facefusion.globals.extra_source_paths is not None and facefusion.globals.extra_reference_face_paths is not None and len(facefusion.globals.extra_source_paths) == len(facefusion.globals.extra_reference_face_paths):
+		clear_reference_faces()
+		source_frames = read_static_images(source_paths)
+		source_face = get_average_face(source_frames)
+		reference_frame = read_image(facefusion.globals.reference_face_path)
+		reference_face = get_one_face(reference_frame, facefusion.globals.reference_face_position)
+		append_reference_face('origin', reference_face)
+		if source_face and reference_face:
+			for frame_processor_module in get_frame_processors_modules(facefusion.globals.frame_processors):
+				abstract_reference_frame = frame_processor_module.get_reference_frame(source_face, reference_face, reference_frame)
+				if numpy.any(abstract_reference_frame):
+					reference_frame = abstract_reference_frame
+					reference_face = get_one_face(reference_frame, facefusion.globals.reference_face_position)
+					append_reference_face(frame_processor_module.__name__, reference_face)
+	
+	# do process
 	reference_faces = get_reference_faces() if 'reference' in facefusion.globals.face_selector_mode else None
 	target_vision_frame = read_static_image(target_path)
 	output_vision_frame = process_frame(
@@ -281,6 +304,96 @@ def process_image(source_path : str, target_path : str, output_path : str) -> No
 	})
 	write_image(output_path, output_vision_frame)
 
+	# multi-face swap
+	if facefusion.globals.extra_source_paths is not None and facefusion.globals.extra_reference_face_paths is not None and len(facefusion.globals.extra_source_paths) == len(facefusion.globals.extra_reference_face_paths):
+		idx = 0
+		for src_path in facefusion.globals.extra_source_paths:
+			ref_path = facefusion.globals.extra_reference_face_paths[idx]
+			idx += 1
+			if not os.path.exists(src_path) or not os.path.exists(ref_path):
+				continue
+			print('EXTRA: ' + str(idx))
+
+			try:
+				# update reference faces
+				clear_reference_faces()
+				src_frames = read_static_images([src_path])
+				src_face = get_average_face(src_frames)
+				ref_frame = read_image(ref_path)
+				ref_face = get_one_face(ref_frame)
+				append_reference_face('origin', ref_face)
+				if src_face and ref_face:
+					for frame_processor_module in get_frame_processors_modules(facefusion.globals.frame_processors):
+						abstract_ref_frame = frame_processor_module.get_reference_frame(src_face, ref_face, ref_frame)
+						if numpy.any(abstract_ref_frame):
+							ref_frame = abstract_ref_frame
+							ref_face = get_one_face(ref_frame)
+							append_reference_face(frame_processor_module.__name__, ref_face)
+				# end
+				
+				ref_faces = get_reference_faces()
+				output_vision_frame = process_frame(
+				{
+					'reference_faces': ref_faces,
+					'target_vision_frame': output_vision_frame
+				})
+
+				write_image(output_path, output_vision_frame)
+
+				print('EXTRA: ' + str(idx) + ' (DONE)')
+			except Exception as e:
+				print('EXTRA: ' + str(idx) + ' (FAILED) ' + str(e))
+
 
 def process_video(source_paths : List[str], temp_frame_paths : List[str]) -> None:
+	# multi-face swap -> update reference face
+	if 'reference' in facefusion.globals.face_selector_mode and facefusion.globals.reference_face_path is not None and facefusion.globals.extra_source_paths is not None and facefusion.globals.extra_reference_face_paths is not None and len(facefusion.globals.extra_source_paths) == len(facefusion.globals.extra_reference_face_paths):
+		clear_reference_faces()
+		source_frames = read_static_images(source_paths)
+		source_face = get_average_face(source_frames)
+		reference_frame = read_image(facefusion.globals.reference_face_path)
+		reference_face = get_one_face(reference_frame, facefusion.globals.reference_face_position)
+		append_reference_face('origin', reference_face)
+		if source_face and reference_face:
+			for frame_processor_module in get_frame_processors_modules(facefusion.globals.frame_processors):
+				abstract_reference_frame = frame_processor_module.get_reference_frame(source_face, reference_face, reference_frame)
+				if numpy.any(abstract_reference_frame):
+					reference_frame = abstract_reference_frame
+					reference_face = get_one_face(reference_frame, facefusion.globals.reference_face_position)
+					append_reference_face(frame_processor_module.__name__, reference_face)
+
+	# do process
 	frame_processors.multi_process_frames(None, temp_frame_paths, process_frames)
+
+	# multi-face swap
+	if facefusion.globals.extra_source_paths is not None and facefusion.globals.extra_reference_face_paths is not None and len(facefusion.globals.extra_source_paths) == len(facefusion.globals.extra_reference_face_paths):
+		idx = 0
+		for src_path in facefusion.globals.extra_source_paths:
+			ref_path = facefusion.globals.extra_reference_face_paths[idx]
+			idx += 1
+			if not os.path.exists(src_path) or not os.path.exists(ref_path):
+				continue
+			print('EXTRA: ' + str(idx))
+			
+			try:
+				# update reference faces
+				clear_reference_faces()
+				src_frames = read_static_images([src_path])
+				src_face = get_average_face(src_frames)
+				ref_frame = read_image(ref_path)
+				ref_face = get_one_face(ref_frame)
+				append_reference_face('origin', ref_face)
+				if src_face and ref_face:
+					for frame_processor_module in get_frame_processors_modules(facefusion.globals.frame_processors):
+						abstract_ref_frame = frame_processor_module.get_reference_frame(src_face, ref_face, ref_frame)
+						if numpy.any(abstract_ref_frame):
+							ref_frame = abstract_ref_frame
+							ref_face = get_one_face(ref_frame)
+							append_reference_face(frame_processor_module.__name__, ref_face)
+				# end
+
+				frame_processors.multi_process_frames(None, temp_frame_paths, process_frames)
+
+				print('EXTRA: ' + str(idx) + ' (DONE)')
+			except Exception as e:
+				print('EXTRA: ' + str(idx) + ' (FAILED) ' + str(e))

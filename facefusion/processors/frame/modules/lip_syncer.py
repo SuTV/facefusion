@@ -5,6 +5,7 @@ import threading
 import cv2
 import numpy
 import onnxruntime
+import os
 
 import facefusion.globals
 import facefusion.processors.frame.core as frame_processors
@@ -35,8 +36,8 @@ MODELS : ModelSet =\
 {
 	'wav2lip_gan':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/wav2lip_gan.onnx',
-		'path': resolve_relative_path('../.assets/models/wav2lip_gan.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/wav2lip_gan.onnx',
+		'path': resolve_relative_path('../.assets/models/wav2lip_gan.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/wav2lip_gan.onnx'),
 	}
 }
 OPTIONS : Optional[OptionsWithModel] = None
@@ -81,14 +82,17 @@ def register_args(program : ArgumentParser) -> None:
 	program.add_argument('--lip-syncer-model', help = wording.get('help.lip_syncer_model'), default = config.get_str_value('frame_processors.lip_syncer_model', 'wav2lip_gan'), choices = frame_processors_choices.lip_syncer_models)
 
 
-def apply_args(program : ArgumentParser) -> None:
-	args = program.parse_args()
-	frame_processors_globals.lip_syncer_model = args.lip_syncer_model
+def apply_args(program : ArgumentParser = None) -> None:
+	if program is None:
+		frame_processors_globals.lip_syncer_model = 'wav2lip_gan'
+	else:
+		args = program.parse_args()
+		frame_processors_globals.lip_syncer_model = args.lip_syncer_model
 
 
 def pre_check() -> bool:
 	if not facefusion.globals.skip_download:
-		download_directory_path = resolve_relative_path('../.assets/models')
+		download_directory_path = resolve_relative_path('../.assets/models') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models')
 		model_url = get_options('model').get('url')
 		process_manager.check()
 		conditional_download(download_directory_path, [ model_url ])

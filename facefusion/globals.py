@@ -54,3 +54,14 @@ skip_audio : Optional[bool] = None
 frame_processors : List[str] = []
 # uis
 ui_layouts : List[str] = []
+# custom
+base_root_path : Optional[str] = None
+reference_face_path : Optional[str] = None
+ignore_content_analyser : bool = True
+face_enhancer_model : Optional[str] = None
+face_enhancer_blend : Optional[int] = None
+frame_enhancer_model : Optional[str] = None
+frame_enhancer_blend : Optional[int] = None
+reference_face_best_distance : bool = True
+extra_source_paths: Optional[List[str]] = None
+extra_reference_face_paths: Optional[List[str]] = None

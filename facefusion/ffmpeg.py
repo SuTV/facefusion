@@ -9,7 +9,7 @@ from facefusion.filesystem import get_temp_frames_pattern, get_temp_output_video
 
 
 def run_ffmpeg(args : List[str]) -> bool:
-	commands = [ 'ffmpeg', '-hide_banner', '-loglevel', 'quiet' ]
+	commands = [ 'ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'quiet' ]
 	commands.extend(args)
 	process = subprocess.Popen(commands, stdout = subprocess.PIPE)
 
@@ -21,48 +21,64 @@ def run_ffmpeg(args : List[str]) -> bool:
 	return process.returncode == 0
 
 
+def run_ffmpeg_timeout(args : List[str]) -> bool:
+	commands = [ 'ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'quiet' ]
+	commands.extend(args)
+	process = subprocess.Popen(commands, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	timeout_seconds = 10 * 60
+	try:
+		outs, errs = process.communicate(timeout=timeout_seconds)
+		return process.returncode == 0
+	except subprocess.TimeoutExpired:
+		process.kill()
+		raise Exception('Timed out after ' + str(timeout_seconds) + ' seconds')
+
+
 def open_ffmpeg(args : List[str]) -> subprocess.Popen[bytes]:
-	commands = [ 'ffmpeg', '-hide_banner', '-loglevel', 'quiet' ]
+	commands = [ 'ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'quiet' ]
 	commands.extend(args)
 	return subprocess.Popen(commands, stdin = subprocess.PIPE, stdout = subprocess.PIPE)
 
 
 def extract_frames(target_path : str, temp_video_resolution : str, temp_video_fps : Fps) -> bool:
-	trim_frame_start = facefusion.globals.trim_frame_start
-	trim_frame_end = facefusion.globals.trim_frame_end
-	temp_frames_pattern = get_temp_frames_pattern(target_path, '%04d')
-	commands = [ '-hwaccel', 'auto', '-i', target_path, '-q:v', '0' ]
+	# trim_frame_start = facefusion.globals.trim_frame_start
+	# trim_frame_end = facefusion.globals.trim_frame_end
+	temp_frames_pattern = get_temp_frames_pattern(target_path, '%06d')
+	# commands = [ '-hwaccel', 'auto', '-i', target_path, '-q:v', '0' ]
 
-	if trim_frame_start is not None and trim_frame_end is not None:
-		commands.extend([ '-vf', 'trim=start_frame=' + str(trim_frame_start) + ':end_frame=' + str(trim_frame_end) + ',scale=' + str(temp_video_resolution) + ',fps=' + str(temp_video_fps) ])
-	elif trim_frame_start is not None:
-		commands.extend([ '-vf', 'trim=start_frame=' + str(trim_frame_start) + ',scale=' + str(temp_video_resolution) + ',fps=' + str(temp_video_fps) ])
-	elif trim_frame_end is not None:
-		commands.extend([ '-vf', 'trim=end_frame=' + str(trim_frame_end) + ',scale=' + str(temp_video_resolution) + ',fps=' + str(temp_video_fps) ])
-	else:
-		commands.extend([ '-vf', 'scale=' + str(temp_video_resolution) + ',fps=' + str(temp_video_fps) ])
-	commands.extend([ '-vsync', '0', temp_frames_pattern ])
-	return run_ffmpeg(commands)
+	# if trim_frame_start is not None and trim_frame_end is not None:
+	# 	commands.extend([ '-vf', 'trim=start_frame=' + str(trim_frame_start) + ':end_frame=' + str(trim_frame_end) + ',scale=' + str(temp_video_resolution) + ',fps=' + str(temp_video_fps) ])
+	# elif trim_frame_start is not None:
+	# 	commands.extend([ '-vf', 'trim=start_frame=' + str(trim_frame_start) + ',scale=' + str(temp_video_resolution) + ',fps=' + str(temp_video_fps) ])
+	# elif trim_frame_end is not None:
+	# 	commands.extend([ '-vf', 'trim=end_frame=' + str(trim_frame_end) + ',scale=' + str(temp_video_resolution) + ',fps=' + str(temp_video_fps) ])
+	# else:
+	# 	commands.extend([ '-vf', 'scale=' + str(temp_video_resolution) + ',fps=' + str(temp_video_fps) ])
+	# commands.extend([ '-vsync', '0', temp_frames_pattern ])
+	commands = ['-hwaccel', 'auto', '-i', target_path, '-pix_fmt', 'rgb24', '-vf', 'fps=' + str(temp_video_fps), temp_frames_pattern]
+	return run_ffmpeg_timeout(commands)
 
 
 def merge_video(target_path : str, output_video_resolution : str, output_video_fps : Fps) -> bool:
 	temp_output_video_path = get_temp_output_video_path(target_path)
-	temp_frames_pattern = get_temp_frames_pattern(target_path, '%04d')
-	commands = [ '-hwaccel', 'auto', '-s', str(output_video_resolution), '-r', str(output_video_fps), '-i', temp_frames_pattern, '-c:v', facefusion.globals.output_video_encoder ]
+	temp_frames_pattern = get_temp_frames_pattern(target_path, '%06d')
+	# commands = [ '-hwaccel', 'auto', '-s', str(output_video_resolution), '-r', str(output_video_fps), '-i', temp_frames_pattern, '-c:v', facefusion.globals.output_video_encoder ]
 
-	if facefusion.globals.output_video_encoder in [ 'libx264', 'libx265' ]:
-		output_video_compression = round(51 - (facefusion.globals.output_video_quality * 0.51))
-		commands.extend([ '-crf', str(output_video_compression), '-preset', facefusion.globals.output_video_preset ])
-	if facefusion.globals.output_video_encoder in [ 'libvpx-vp9' ]:
-		output_video_compression = round(63 - (facefusion.globals.output_video_quality * 0.63))
-		commands.extend([ '-crf', str(output_video_compression) ])
-	if facefusion.globals.output_video_encoder in [ 'h264_nvenc', 'hevc_nvenc' ]:
-		output_video_compression = round(51 - (facefusion.globals.output_video_quality * 0.51))
-		commands.extend([ '-cq', str(output_video_compression), '-preset', map_nvenc_preset(facefusion.globals.output_video_preset) ])
-	if facefusion.globals.output_video_encoder in [ 'h264_amf', 'hevc_amf' ]:
-		output_video_compression = round(51 - (facefusion.globals.output_video_quality * 0.51))
-		commands.extend([ '-qp_i', str(output_video_compression), '-qp_p', str(output_video_compression), '-quality', map_amf_preset(facefusion.globals.output_video_preset) ])
-	commands.extend([ '-pix_fmt', 'yuv420p', '-colorspace', 'bt709', '-y', temp_output_video_path ])
+	# if facefusion.globals.output_video_encoder in [ 'libx264', 'libx265' ]:
+	# 	output_video_compression = round(51 - (facefusion.globals.output_video_quality * 0.51))
+	# 	commands.extend([ '-crf', str(output_video_compression), '-preset', facefusion.globals.output_video_preset ])
+	# if facefusion.globals.output_video_encoder in [ 'libvpx-vp9' ]:
+	# 	output_video_compression = round(63 - (facefusion.globals.output_video_quality * 0.63))
+	# 	commands.extend([ '-crf', str(output_video_compression) ])
+	# if facefusion.globals.output_video_encoder in [ 'h264_nvenc', 'hevc_nvenc' ]:
+	# 	output_video_compression = round(51 - (facefusion.globals.output_video_quality * 0.51))
+	# 	commands.extend([ '-cq', str(output_video_compression), '-preset', map_nvenc_preset(facefusion.globals.output_video_preset) ])
+	# if facefusion.globals.output_video_encoder in [ 'h264_amf', 'hevc_amf' ]:
+	# 	output_video_compression = round(51 - (facefusion.globals.output_video_quality * 0.51))
+	# 	commands.extend([ '-qp_i', str(output_video_compression), '-qp_p', str(output_video_compression), '-quality', map_amf_preset(facefusion.globals.output_video_preset) ])
+	# commands.extend([ '-pix_fmt', 'yuv420p', '-colorspace', 'bt709', '-y', temp_output_video_path ])
+	# return run_ffmpeg(commands)
+	commands = ['-hwaccel', 'auto', '-r', str(output_video_fps), '-i', temp_frames_pattern, '-c:v', facefusion.globals.output_video_encoder, '-crf', str(facefusion.globals.output_video_quality), '-pix_fmt', 'yuv420p', '-vf', 'colorspace=bt709:iall=bt601-6-625:fast=1', '-y', temp_output_video_path]
 	return run_ffmpeg(commands)
 
 

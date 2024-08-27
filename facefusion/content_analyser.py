@@ -6,6 +6,7 @@ import cv2
 import numpy
 import onnxruntime
 from tqdm import tqdm
+import os
 
 import facefusion.globals
 from facefusion import process_manager, wording
@@ -21,8 +22,8 @@ MODELS : Dict[str, ModelValue] =\
 {
 	'open_nsfw':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/open_nsfw.onnx',
-		'path': resolve_relative_path('../.assets/models/open_nsfw.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/open_nsfw.onnx',
+		'path': resolve_relative_path('../.assets/models/open_nsfw.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/open_nsfw.onnx')
 	}
 }
 PROBABILITY_LIMIT = 0.80
@@ -50,7 +51,7 @@ def clear_content_analyser() -> None:
 
 def pre_check() -> bool:
 	if not facefusion.globals.skip_download:
-		download_directory_path = resolve_relative_path('../.assets/models')
+		download_directory_path = resolve_relative_path('../.assets/models') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models')
 		model_url = MODELS.get('open_nsfw').get('url')
 		process_manager.check()
 		conditional_download(download_directory_path, [ model_url ])

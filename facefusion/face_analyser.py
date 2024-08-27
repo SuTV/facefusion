@@ -4,6 +4,7 @@ import threading
 import cv2
 import numpy
 import onnxruntime
+import os
 
 import facefusion.globals
 from facefusion import process_manager
@@ -23,53 +24,53 @@ MODELS : ModelSet =\
 {
 	'face_detector_retinaface':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/retinaface_10g.onnx',
-		'path': resolve_relative_path('../.assets/models/retinaface_10g.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/retinaface_10g.onnx',
+		'path': resolve_relative_path('../.assets/models/retinaface_10g.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/retinaface_10g.onnx')
 	},
 	'face_detector_scrfd':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/scrfd_2.5g.onnx',
-		'path': resolve_relative_path('../.assets/models/scrfd_2.5g.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/scrfd_2.5g.onnx',
+		'path': resolve_relative_path('../.assets/models/scrfd_2.5g.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/scrfd_2.5g.onnx')
 	},
 	'face_detector_yoloface':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/yoloface_8n.onnx',
-		'path': resolve_relative_path('../.assets/models/yoloface_8n.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/yoloface_8n.onnx',
+		'path': resolve_relative_path('../.assets/models/yoloface_8n.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/yoloface_8n.onnx')
 	},
 	'face_detector_yunet':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/yunet_2023mar.onnx',
-		'path': resolve_relative_path('../.assets/models/yunet_2023mar.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/yunet_2023mar.onnx',
+		'path': resolve_relative_path('../.assets/models/yunet_2023mar.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/yunet_2023mar.onnx')
 	},
 	'face_recognizer_arcface_blendswap':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/arcface_w600k_r50.onnx',
-		'path': resolve_relative_path('../.assets/models/arcface_w600k_r50.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/arcface_w600k_r50.onnx',
+		'path': resolve_relative_path('../.assets/models/arcface_w600k_r50.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/arcface_w600k_r50.onnx')
 	},
 	'face_recognizer_arcface_inswapper':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/arcface_w600k_r50.onnx',
-		'path': resolve_relative_path('../.assets/models/arcface_w600k_r50.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/arcface_w600k_r50.onnx',
+		'path': resolve_relative_path('../.assets/models/arcface_w600k_r50.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/arcface_w600k_r50.onnx')
 	},
 	'face_recognizer_arcface_simswap':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/arcface_simswap.onnx',
-		'path': resolve_relative_path('../.assets/models/arcface_simswap.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/arcface_simswap.onnx',
+		'path': resolve_relative_path('../.assets/models/arcface_simswap.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/arcface_simswap.onnx')
 	},
 	'face_recognizer_arcface_uniface':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/arcface_w600k_r50.onnx',
-		'path': resolve_relative_path('../.assets/models/arcface_w600k_r50.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/arcface_w600k_r50.onnx',
+		'path': resolve_relative_path('../.assets/models/arcface_w600k_r50.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/arcface_w600k_r50.onnx')
 	},
 	'face_landmarker':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/2dfan4.onnx',
-		'path': resolve_relative_path('../.assets/models/2dfan4.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/2dfan4.onnx',
+		'path': resolve_relative_path('../.assets/models/2dfan4.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/2dfan4.onnx')
 	},
 	'gender_age':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/gender_age.onnx',
-		'path': resolve_relative_path('../.assets/models/gender_age.onnx')
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/gender_age.onnx',
+		'path': resolve_relative_path('../.assets/models/gender_age.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/gender_age.onnx')
 	}
 }
 
@@ -122,7 +123,7 @@ def clear_face_analyser() -> Any:
 
 def pre_check() -> bool:
 	if not facefusion.globals.skip_download:
-		download_directory_path = resolve_relative_path('../.assets/models')
+		download_directory_path = resolve_relative_path('../.assets/models') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models')
 		model_urls =\
 		[
 			MODELS.get('face_landmarker').get('url'),
@@ -494,13 +495,34 @@ def find_similar_faces(reference_faces : FaceSet, vision_frame : VisionFrame, fa
 	many_faces = get_many_faces(vision_frame)
 
 	if reference_faces:
-		for reference_set in reference_faces:
-			if not similar_faces:
-				for reference_face in reference_faces[reference_set]:
-					for face in many_faces:
-						if compare_faces(face, reference_face, face_distance):
-							similar_faces.append(face)
+		if facefusion.globals.reference_face_best_distance is True:
+			best_distance = 1000
+			best_face = None
+			
+			for reference_set in reference_faces:
+				if not similar_faces:
+					for reference_face in reference_faces[reference_set]:
+						for face in many_faces:
+							distance = get_face_distance(face, reference_face)
+							if distance < best_distance and distance < face_distance:
+								best_distance = distance
+								best_face = face
+
+			if best_face is not None:
+				similar_faces.append(best_face)
+		else:
+			for reference_set in reference_faces:
+				if not similar_faces:
+					for reference_face in reference_faces[reference_set]:
+						for face in many_faces:
+							if compare_faces(face, reference_face, face_distance):
+								similar_faces.append(face)
 	return similar_faces
+
+
+def get_face_distance(face : Face, reference_face : Face) -> bool:
+	current_face_distance = calc_face_distance(face, reference_face)
+	return current_face_distance
 
 
 def compare_faces(face : Face, reference_face : Face, face_distance : float) -> bool:

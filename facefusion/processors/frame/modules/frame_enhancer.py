@@ -5,6 +5,7 @@ import threading
 import cv2
 import numpy
 import onnxruntime
+import os
 
 import facefusion.globals
 import facefusion.processors.frame.core as frame_processors
@@ -29,36 +30,36 @@ MODELS : ModelSet =\
 {
 	'lsdir_x4':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/lsdir_x4.onnx',
-		'path': resolve_relative_path('../.assets/models/lsdir_x4.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/lsdir_x4.onnx',
+		'path': resolve_relative_path('../.assets/models/lsdir_x4.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/lsdir_x4.onnx'),
 		'size': (128, 8, 2),
 		'scale': 4
 	},
 	'nomos8k_sc_x4':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/nomos8k_sc_x4.onnx',
-		'path': resolve_relative_path('../.assets/models/nomos8k_sc_x4.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/nomos8k_sc_x4.onnx',
+		'path': resolve_relative_path('../.assets/models/nomos8k_sc_x4.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/nomos8k_sc_x4.onnx'),
 		'size': (128, 8, 2),
 		'scale': 4
 	},
 	'real_esrgan_x4':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/real_esrgan_x4.onnx',
-		'path': resolve_relative_path('../.assets/models/real_esrgan_x4.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/real_esrgan_x4.onnx',
+		'path': resolve_relative_path('../.assets/models/real_esrgan_x4.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/real_esrgan_x4.onnx'),
 		'size': (128, 8, 2),
 		'scale': 4
 	},
 	'real_esrgan_x4_fp16':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/real_esrgan_x4_fp16.onnx',
-		'path': resolve_relative_path('../.assets/models/real_esrgan_x4_fp16.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/real_esrgan_x4_fp16.onnx',
+		'path': resolve_relative_path('../.assets/models/real_esrgan_x4_fp16.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/real_esrgan_x4_fp16.onnx'),
 		'size': (128, 8, 2),
 		'scale': 4
 	},
 	'span_kendata_x4':
 	{
-		'url': 'https://github.com/facefusion/facefusion-assets/releases/download/models/span_kendata_x4.onnx',
-		'path': resolve_relative_path('../.assets/models/span_kendata_x4.onnx'),
+		'url': 'https://facetool-us.s3.amazonaws.com/resources/facetool/facefusion/span_kendata_x4.onnx',
+		'path': resolve_relative_path('../.assets/models/span_kendata_x4.onnx') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models/span_kendata_x4.onnx'),
 		'size': (128, 8, 2),
 		'scale': 4
 	}
@@ -106,15 +107,19 @@ def register_args(program : ArgumentParser) -> None:
 	program.add_argument('--frame-enhancer-blend', help = wording.get('help.frame_enhancer_blend'), type = int, default = config.get_int_value('frame_processors.frame_enhancer_blend', '80'), choices = frame_processors_choices.frame_enhancer_blend_range, metavar = create_metavar(frame_processors_choices.frame_enhancer_blend_range))
 
 
-def apply_args(program : ArgumentParser) -> None:
-	args = program.parse_args()
-	frame_processors_globals.frame_enhancer_model = args.frame_enhancer_model
-	frame_processors_globals.frame_enhancer_blend = args.frame_enhancer_blend
+def apply_args(program : ArgumentParser = None) -> None:
+	if program is None:
+		frame_processors_globals.frame_enhancer_model = 'span_kendata_x4' if facefusion.globals.frame_enhancer_model is None else facefusion.globals.frame_enhancer_model
+		frame_processors_globals.frame_enhancer_blend = 80 if facefusion.globals.frame_enhancer_blend is None else int(facefusion.globals.frame_enhancer_blend)
+	else:
+		args = program.parse_args()
+		frame_processors_globals.frame_enhancer_model = args.frame_enhancer_model
+		frame_processors_globals.frame_enhancer_blend = args.frame_enhancer_blend
 
 
 def pre_check() -> bool:
 	if not facefusion.globals.skip_download:
-		download_directory_path = resolve_relative_path('../.assets/models')
+		download_directory_path = resolve_relative_path('../.assets/models') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, '.assets/models')
 		model_url = get_options('model').get('url')
 		process_manager.check()
 		conditional_download(download_directory_path, [ model_url ])

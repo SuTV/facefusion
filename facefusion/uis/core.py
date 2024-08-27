@@ -3,6 +3,7 @@ from types import ModuleType
 import importlib
 import sys
 import gradio
+import os
 
 import facefusion.globals
 from facefusion.uis import overrides
@@ -138,6 +139,6 @@ def get_theme() -> gradio.Theme:
 
 
 def get_css() -> str:
-	fixes_css_path = resolve_relative_path('uis/assets/fixes.css')
-	overrides_css_path = resolve_relative_path('uis/assets/overrides.css')
+	fixes_css_path = resolve_relative_path('uis/assets/fixes.css') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, 'facefusion/uis/assets/fixes.css')
+	overrides_css_path = resolve_relative_path('uis/assets/overrides.css') if facefusion.globals.base_root_path is None else os.path.join(facefusion.globals.base_root_path, 'facefusion/uis/assets/overrides.css')
 	return open(fixes_css_path, 'r').read() + open(overrides_css_path, 'r').read()

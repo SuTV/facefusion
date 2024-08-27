@@ -2,13 +2,13 @@ from typing import List, Optional
 import glob
 import os
 import shutil
-import tempfile
+# import tempfile
 import filetype
 from pathlib import Path
 
 import facefusion.globals
 
-TEMP_DIRECTORY_PATH = os.path.join(tempfile.gettempdir(), 'facefusion')
+TEMP_DIRECTORY_PATH = 'temp' #os.path.join(tempfile.gettempdir(), 'facefusion')
 TEMP_OUTPUT_VIDEO_NAME = 'temp.mp4'
 
 
@@ -24,7 +24,8 @@ def get_temp_frames_pattern(target_path : str, temp_frame_prefix : str) -> str:
 
 def get_temp_directory_path(target_path : str) -> str:
 	target_name, _ = os.path.splitext(os.path.basename(target_path))
-	return os.path.join(TEMP_DIRECTORY_PATH, target_name)
+	target_directory_path = os.path.dirname(target_path)
+	return os.path.join(target_directory_path, TEMP_DIRECTORY_PATH, target_name)
 
 
 def get_temp_output_video_path(target_path : str) -> str:

@@ -39,9 +39,12 @@ def register_args(program : ArgumentParser) -> None:
 	program.add_argument('--face-debugger-items', help = wording.get('help.face_debugger_items').format(choices = ', '.join(frame_processors_choices.face_debugger_items)), default = config.get_str_list('frame_processors.face_debugger_items', 'face-landmark-5/68 face-mask'), choices = frame_processors_choices.face_debugger_items, nargs = '+', metavar = 'FACE_DEBUGGER_ITEMS')
 
 
-def apply_args(program : ArgumentParser) -> None:
-	args = program.parse_args()
-	frame_processors_globals.face_debugger_items = args.face_debugger_items
+def apply_args(program : ArgumentParser = None) -> None:
+	if program is None:
+		frame_processors_globals.face_debugger_items = ['face-landmark-5/68', 'face-mask']
+	else:
+		args = program.parse_args()
+		frame_processors_globals.face_debugger_items = args.face_debugger_items
 
 
 def pre_check() -> bool:
