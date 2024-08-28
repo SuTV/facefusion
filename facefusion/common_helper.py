@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Tuple
 import platform
 
 
@@ -44,3 +44,12 @@ def to_lower_case(__string__ : Any) -> str:
 
 def get_first(__list__ : Any) -> Any:
 	return next(iter(__list__), None)
+
+
+def extract_major_version(version : str) -> Tuple[int, int]:
+	versions = version.split('.')
+	if len(versions) > 1:
+		return int(versions[0]), int(versions[1])
+	if len(versions) == 1:
+		return int(versions[0]), 0
+	return 0, 0
